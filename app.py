@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 import duckdb
@@ -19,28 +20,77 @@ st.set_page_config(
 # LOAD DATA FROM WAREHOUSE
 # ============================================================
 
+WAREHOUSE_DIR = "data/warehouse"
+
+REQUIRED_FILES = {
+    "fact": "fact_security_event.parquet",
+    "dim_attack": "dim_attack.parquet",
+    "dim_ip": "dim_ip.parquet",
+    "dim_network": "dim_network.parquet",
+    "dim_time": "dim_time.parquet",
+}
+
+# Columns each table needs to have for the query below to work.
+# Used to give a precise error message instead of a bare DuckDB
+# BinderException / KeyError if the parquet schema drifts.
+REQUIRED_COLUMNS = {
+    "fact": [
+        "event_id", "Timestamp", "attack_id", "source_ip_id",
+        "destination_ip_id", "network_id", "time_id",
+        "Packet Length", "Anomaly Scores", "Severity Level",
+        "Action Taken", "malware_indicator", "alert_triggered",
+        "firewall_log_present", "ids_ips_alert_present",
+        "proxy_present", "connection_type",
+    ],
+    "dim_attack": ["attack_id", "Attack Type", "Attack Signature"],
+    "dim_ip": ["ip_id", "ip_address", "is_private"],
+    "dim_network": [
+        "network_id", "Network Segment", "Protocol",
+        "Traffic Type", "Packet Type", "Log Source",
+    ],
+    "dim_time": [
+        "time_id", "event_date", "event_hour",
+        "day_of_week", "month", "is_weekend",
+    ],
+}
+
+
+def _load_parquet_or_raise(label, filename):
+    path = os.path.join(WAREHOUSE_DIR, filename)
+
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"Missing warehouse file for '{label}': expected it at "
+            f"'{path}' (cwd={os.getcwd()}). Make sure the parquet "
+            f"files are committed to the repo (they are often "
+            f"excluded via .gitignore) and that the path is "
+            f"relative to the repo root on Streamlit Cloud."
+        )
+
+    df = pd.read_parquet(path)
+
+    missing = [
+        col for col in REQUIRED_COLUMNS[label] if col not in df.columns
+    ]
+
+    if missing:
+        raise KeyError(
+            f"Table '{label}' ({path}) is missing expected column(s): "
+            f"{missing}. Columns actually present: "
+            f"{sorted(df.columns.tolist())}"
+        )
+
+    return df
+
+
 @st.cache_data
 def load_data():
 
-    fact = pd.read_parquet(
-        "data/warehouse/fact_security_event.parquet"
-    )
-
-    dim_attack = pd.read_parquet(
-        "data/warehouse/dim_attack.parquet"
-    )
-
-    dim_ip = pd.read_parquet(
-        "data/warehouse/dim_ip.parquet"
-    )
-
-    dim_network = pd.read_parquet(
-        "data/warehouse/dim_network.parquet"
-    )
-
-    dim_time = pd.read_parquet(
-        "data/warehouse/dim_time.parquet"
-    )
+    fact = _load_parquet_or_raise("fact", REQUIRED_FILES["fact"])
+    dim_attack = _load_parquet_or_raise("dim_attack", REQUIRED_FILES["dim_attack"])
+    dim_ip = _load_parquet_or_raise("dim_ip", REQUIRED_FILES["dim_ip"])
+    dim_network = _load_parquet_or_raise("dim_network", REQUIRED_FILES["dim_network"])
+    dim_time = _load_parquet_or_raise("dim_time", REQUIRED_FILES["dim_time"])
 
     con = duckdb.connect()
 
@@ -106,7 +156,19 @@ def load_data():
         ON f.time_id = t.time_id
     """
 
-    df = con.execute(query).df()
+    try:
+        df = con.execute(query).df()
+    except duckdb.Error as e:
+        raise RuntimeError(
+            f"DuckDB query failed: {e}\n\n"
+            f"fact columns: {sorted(fact.columns.tolist())}\n"
+            f"dim_attack columns: {sorted(dim_attack.columns.tolist())}\n"
+            f"dim_ip columns: {sorted(dim_ip.columns.tolist())}\n"
+            f"dim_network columns: {sorted(dim_network.columns.tolist())}\n"
+            f"dim_time columns: {sorted(dim_time.columns.tolist())}"
+        ) from e
+    finally:
+        con.close()
 
     return df
 

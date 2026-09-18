@@ -19,24 +19,29 @@ st.set_page_config(
 
 # ============================================================
 # DESIGN TOKENS
+# A light, professional dashboard theme: easier to scan for long
+# tables of security events than a dark "hacker" theme, and it keeps
+# Streamlit's native widgets (selectboxes, tables, buttons) rendering
+# the way they're designed to, instead of fighting them with overrides.
 # ============================================================
 
 COLORS = {
-    "bg": "#0B0F14",
-    "surface": "#141B24",
-    "surface_alt": "#0E131A",
-    "border": "#2B3644",
-    "text": "#F2F5F8",
-    "text_dim": "#9BA9BA",
-    "accent": "#5B9BFF",
+    "bg": "#F6F8FB",
+    "surface": "#FFFFFF",
+    "border": "#E2E8F0",
+    "text": "#1A2233",
+    "text_dim": "#647087",
+    "accent": "#2F6FED",
 }
 
 RISK_COLORS = {
-    "Critical": "#F0465A",
-    "High": "#F59B4B",
-    "Medium": "#F2C94C",
-    "Low": "#4FCB8D",
+    "Critical": "#DC2626",
+    "High": "#EA580C",
+    "Medium": "#B45309",
+    "Low": "#16A34A",
 }
+
+RISK_ORDER = ["Critical", "High", "Medium", "Low"]
 
 
 def _risk_color(value):
@@ -54,53 +59,50 @@ st.markdown(
         html, body, [class*="css"] {{
             font-family: 'IBM Plex Sans', sans-serif;
         }}
-
-        .stApp {{
-            background-color: {COLORS['bg']};
-            color: {COLORS['text']};
-        }}
-
-        section[data-testid="stSidebar"] {{
-            background-color: {COLORS['surface_alt']};
-            border-right: 1px solid {COLORS['border']};
-        }}
-
-        #MainMenu, footer {{visibility: hidden;}}
+        .stApp {{ background-color: {COLORS['bg']}; }}
+        #MainMenu, footer {{ visibility: hidden; }}
 
         .app-title {{
-            font-size: 1.15rem;
-            font-weight: 600;
+            font-size: 1.05rem;
+            font-weight: 700;
             color: {COLORS['text']};
-            letter-spacing: 0.01em;
-            margin-bottom: 0;
         }}
         .app-subtitle {{
             font-size: 0.82rem;
             color: {COLORS['text_dim']};
             margin-top: 2px;
-            margin-bottom: 18px;
+            margin-bottom: 14px;
+        }}
+        .page-title {{
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: {COLORS['text']};
+            margin-bottom: 2px;
+        }}
+        .page-subtitle {{
+            font-size: 0.95rem;
+            color: {COLORS['text_dim']};
+            margin-bottom: 20px;
         }}
 
         .section-header {{
-            margin: 30px 0 14px 0;
-            padding-bottom: 8px;
-            border-bottom: 1px solid {COLORS['border']};
+            margin: 26px 0 12px 0;
         }}
         .section-title {{
-            font-size: 1.02rem;
+            font-size: 1rem;
             font-weight: 600;
             color: {COLORS['text']};
         }}
         .section-sub {{
-            font-size: 0.84rem;
+            font-size: 0.82rem;
             color: {COLORS['text_dim']};
-            margin-top: 2px;
+            margin-top: 1px;
         }}
 
         .kpi-card {{
             background-color: {COLORS['surface']};
             border: 1px solid {COLORS['border']};
-            border-radius: 6px;
+            border-radius: 8px;
             padding: 16px 18px;
             height: 100%;
         }}
@@ -111,11 +113,16 @@ st.markdown(
         }}
         .kpi-value {{
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 1.7rem;
+            font-size: 1.65rem;
             font-weight: 600;
             color: {COLORS['text']};
         }}
         .kpi-value.accent {{ color: {COLORS['accent']}; }}
+        .kpi-note {{
+            font-size: 0.76rem;
+            color: {COLORS['text_dim']};
+            margin-top: 4px;
+        }}
 
         .badge {{
             display: inline-block;
@@ -126,33 +133,56 @@ st.markdown(
             border-radius: 4px;
         }}
 
-        [data-testid="stMetricValue"] {{
-            font-family: 'IBM Plex Mono', monospace;
+        .legend-row {{ margin-bottom: 18px; }}
+        .legend-chip {{
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.82rem;
+            color: {COLORS['text_dim']};
+            margin-right: 18px;
+        }}
+        .legend-dot {{
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            margin-right: 6px;
         }}
 
-        .stTabs [data-baseweb="tab-list"] {{
-            gap: 4px;
-        }}
-
-        div[data-baseweb="select"] > div {{
+        .help-box {{
             background-color: {COLORS['surface']};
-            border-color: {COLORS['border']};
+            border: 1px solid {COLORS['border']};
+            border-left: 3px solid {COLORS['accent']};
+            border-radius: 6px;
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            color: {COLORS['text_dim']};
+            margin-bottom: 18px;
         }}
 
-        section[data-testid="stSidebar"] label p {{
-            color: {COLORS['text']} !important;
-            font-size: 0.92rem;
+        section[data-testid="stSidebar"] {{
+            border-right: 1px solid {COLORS['border']};
         }}
 
-        p, span, label, div {{ color: {COLORS['text']}; }}
+        [data-testid="stMetricValue"] {{ font-family: 'IBM Plex Mono', monospace; }}
 
-        [data-testid="stMetricLabel"] {{ color: {COLORS['text_dim']}; }}
-
-        hr {{ border-color: {COLORS['border']}; }}
+        div[data-testid="stDataFrame"] {{
+            border: 1px solid {COLORS['border']};
+            border-radius: 8px;
+            overflow: hidden;
+        }}
     </style>
     """,
     unsafe_allow_html=True,
 )
+
+
+def page_header(title, subtitle):
+    html = (
+        f'<div class="page-title">{title}</div>'
+        f'<div class="page-subtitle">{subtitle}</div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def section_header(title, subtitle=None):
@@ -161,41 +191,55 @@ def section_header(title, subtitle=None):
     st.markdown(html, unsafe_allow_html=True)
 
 
-def page_header(title, subtitle):
-    html = (
-        f'<div class="app-title" style="font-size:1.4rem;">{title}</div>'
-        f'<div class="app-subtitle">{subtitle}</div>'
-    )
-    st.markdown(html, unsafe_allow_html=True)
-
-
-def kpi_card(col, label, value, accent=False):
+def kpi_card(col, label, value, note=None, accent=False):
     cls = "kpi-value accent" if accent else "kpi-value"
-    html = f'<div class="kpi-card"><div class="kpi-label">{label}</div><div class="{cls}">{value}</div></div>'
+    note_html = f'<div class="kpi-note">{note}</div>' if note else ""
+    html = (
+        f'<div class="kpi-card"><div class="kpi-label">{label}</div>'
+        f'<div class="{cls}">{value}</div>{note_html}</div>'
+    )
     col.markdown(html, unsafe_allow_html=True)
 
 
 def risk_badge(value):
     color = _risk_color(value)
     return (
-        f'<span class="badge" style="background:{color}22;'
+        f'<span class="badge" style="background:{color}1A;'
         f'color:{color};border:1px solid {color}55;">{value}</span>'
     )
 
 
-def style_fig(fig, height=340):
+def risk_legend():
+    chips = "".join(
+        f'<span class="legend-chip"><span class="legend-dot" '
+        f'style="background:{RISK_COLORS[level]};"></span>{level}</span>'
+        for level in RISK_ORDER
+    )
+    st.markdown(f'<div class="legend-row">{chips}</div>', unsafe_allow_html=True)
+
+
+def help_box(text):
+    st.markdown(f'<div class="help-box">{text}</div>', unsafe_allow_html=True)
+
+
+def style_fig(fig, height=340, show_legend=True):
     fig.update_layout(
         paper_bgcolor=COLORS["surface"],
         plot_bgcolor=COLORS["surface"],
         font=dict(family="IBM Plex Sans, sans-serif", color=COLORS["text"], size=12),
         title=dict(font=dict(size=14, color=COLORS["text"])),
-        margin=dict(l=10, r=10, t=45, b=10),
+        margin=dict(l=10, r=10, t=40, b=10),
         legend=dict(bgcolor="rgba(0,0,0,0)"),
+        showlegend=show_legend,
         height=height,
     )
     fig.update_xaxes(gridcolor=COLORS["border"], zeroline=False, linecolor=COLORS["border"])
     fig.update_yaxes(gridcolor=COLORS["border"], zeroline=False, linecolor=COLORS["border"])
     return fig
+
+
+def chart_panel():
+    return st.container(border=True)
 
 
 # ============================================================
@@ -413,21 +457,39 @@ except Exception as e:
 
 st.sidebar.markdown(
     '<div class="app-title">Threat Monitoring</div>'
-    '<div class="app-subtitle">Security event analytics</div>',
+    '<div class="app-subtitle">Security event analytics for the monitored network</div>',
     unsafe_allow_html=True,
 )
+
+NAV_ITEMS = {
+    "Overview": "Volume, severity, and traffic trends",
+    "Alerts": "Events that need attention now",
+    "Investigation": "Search and filter every event",
+    "Event detail": "Look up one event by ID",
+}
 
 page = st.sidebar.radio(
     "Navigation",
-    ["Overview", "Alerts", "Investigation", "Event detail"],
+    list(NAV_ITEMS.keys()),
     label_visibility="collapsed",
 )
 
-st.sidebar.markdown(f"<hr>", unsafe_allow_html=True)
-st.sidebar.markdown(
-    f"<div class='app-subtitle'>{len(df):,} events loaded</div>",
-    unsafe_allow_html=True,
-)
+st.sidebar.caption(NAV_ITEMS[page])
+st.sidebar.divider()
+st.sidebar.caption(f"{len(df):,} events loaded from the warehouse")
+
+with st.sidebar.expander("How risk is scored"):
+    st.markdown(
+        "Each event earns points toward a 0–100 risk score:\n"
+        "- Severity marked **High** → +30\n"
+        "- Anomaly score above 80 → +25\n"
+        "- Malware indicator present → +20\n"
+        "- IDS/IPS alert present → +15\n"
+        "- Alert triggered → +10\n\n"
+        "Score of 80+ is **Critical**, 60+ **High**, 30+ **Medium**, "
+        "below that is **Low**. Events scoring 30 or higher are "
+        "flagged as suspicious."
+    )
 
 
 # ============================================================
@@ -436,7 +498,7 @@ st.sidebar.markdown(
 
 if page == "Overview":
 
-    page_header("Security overview", "Event volume, severity, and traffic across the monitored network")
+    page_header("Overview", "How much is happening, how severe it is, and where it's coming from")
 
     total_events = len(df)
     high_risk = len(df[df["risk_level"].isin(["Critical", "High"])])
@@ -444,62 +506,66 @@ if page == "Overview":
     alerts = int((df["alert_triggered"] == 1).sum())
 
     c1, c2, c3, c4 = st.columns(4)
-    kpi_card(c1, "Total events", f"{total_events:,}")
-    kpi_card(c2, "High risk", f"{high_risk:,}", accent=True)
-    kpi_card(c3, "Malware indicators", f"{malware:,}")
-    kpi_card(c4, "Alerts triggered", f"{alerts:,}")
+    kpi_card(c1, "Total events", f"{total_events:,}", "All logged events in range")
+    kpi_card(c2, "High risk", f"{high_risk:,}", "Critical + High risk level", accent=True)
+    kpi_card(c3, "Malware indicators", f"{malware:,}", "Events flagging malware")
+    kpi_card(c4, "Alerts triggered", f"{alerts:,}", "Events that fired an alert")
 
-    section_header("Events over time")
-    daily_events = df.groupby("event_date").size().reset_index(name="events")
-    fig = px.line(daily_events, x="event_date", y="events")
-    fig.update_traces(line_color=COLORS["accent"], line_width=2.2)
-    st.plotly_chart(style_fig(fig), use_container_width=True)
+    section_header("Events over time", "Daily event volume across the full period")
+    with chart_panel():
+        daily_events = df.groupby("event_date").size().reset_index(name="events")
+        fig = px.line(daily_events, x="event_date", y="events")
+        fig.update_traces(line_color=COLORS["accent"], line_width=2.2)
+        st.plotly_chart(style_fig(fig, show_legend=False), use_container_width=True)
 
     col1, col2 = st.columns(2)
 
     with col1:
-        section_header("Attack type distribution")
-        attack_counts = df["attack_type"].value_counts().reset_index()
-        attack_counts.columns = ["attack_type", "events"]
-        fig_attack = px.bar(attack_counts, x="attack_type", y="events")
-        fig_attack.update_traces(marker_color=COLORS["accent"])
-        st.plotly_chart(style_fig(fig_attack), use_container_width=True)
+        section_header("Attack type", "Which attack types occur most often")
+        with chart_panel():
+            attack_counts = df["attack_type"].value_counts().reset_index()
+            attack_counts.columns = ["attack_type", "events"]
+            fig_attack = px.bar(attack_counts, x="attack_type", y="events")
+            fig_attack.update_traces(marker_color=COLORS["accent"])
+            st.plotly_chart(style_fig(fig_attack, show_legend=False), use_container_width=True)
 
     with col2:
-        section_header("Severity level")
-        severity_counts = df["severity_level"].value_counts().reset_index()
-        severity_counts.columns = ["severity", "events"]
-        fig_severity = px.bar(
-            severity_counts, x="severity", y="events",
-            color="severity", color_discrete_map=RISK_COLORS,
-        )
-        fig_severity.update_layout(showlegend=False)
-        st.plotly_chart(style_fig(fig_severity), use_container_width=True)
+        section_header("Severity level", "Split of events by severity")
+        with chart_panel():
+            severity_counts = df["severity_level"].value_counts().reset_index()
+            severity_counts.columns = ["severity", "events"]
+            fig_severity = px.bar(
+                severity_counts, x="severity", y="events",
+                color="severity", color_discrete_map=RISK_COLORS,
+            )
+            st.plotly_chart(style_fig(fig_severity, show_legend=False), use_container_width=True)
 
     col3, col4 = st.columns(2)
 
     with col3:
-        section_header("Protocol distribution")
-        protocol_counts = df["protocol"].value_counts().reset_index()
-        protocol_counts.columns = ["protocol", "events"]
-        fig_protocol = go.Figure(
-            data=[go.Pie(
-                labels=protocol_counts["protocol"],
-                values=protocol_counts["events"],
-                hole=0.55,
-                marker=dict(line=dict(color=COLORS["surface"], width=2)),
-            )]
-        )
-        st.plotly_chart(style_fig(fig_protocol), use_container_width=True)
+        section_header("Protocol", "Share of traffic by protocol")
+        with chart_panel():
+            protocol_counts = df["protocol"].value_counts().reset_index()
+            protocol_counts.columns = ["protocol", "events"]
+            fig_protocol = go.Figure(
+                data=[go.Pie(
+                    labels=protocol_counts["protocol"],
+                    values=protocol_counts["events"],
+                    hole=0.55,
+                    marker=dict(line=dict(color=COLORS["surface"], width=2)),
+                )]
+            )
+            st.plotly_chart(style_fig(fig_protocol), use_container_width=True)
 
     with col4:
-        section_header("Action taken")
-        action_counts = df["action_taken"].value_counts().reset_index()
-        action_counts.columns = ["action", "events"]
-        fig_action = px.bar(action_counts, x="events", y="action", orientation="h")
-        fig_action.update_traces(marker_color=COLORS["accent"])
-        fig_action.update_layout(yaxis=dict(categoryorder="total ascending"))
-        st.plotly_chart(style_fig(fig_action), use_container_width=True)
+        section_header("Action taken", "What was done in response to each event")
+        with chart_panel():
+            action_counts = df["action_taken"].value_counts().reset_index()
+            action_counts.columns = ["action", "events"]
+            fig_action = px.bar(action_counts, x="events", y="action", orientation="h")
+            fig_action.update_traces(marker_color=COLORS["accent"])
+            fig_action.update_layout(yaxis=dict(categoryorder="total ascending"))
+            st.plotly_chart(style_fig(fig_action, show_legend=False), use_container_width=True)
 
 
 # ============================================================
@@ -508,7 +574,7 @@ if page == "Overview":
 
 elif page == "Alerts":
 
-    page_header("Threat alerts", "Suspicious events, ranked by risk score")
+    page_header("Alerts", "Events with a risk score of 30 or higher, most urgent first")
 
     alerts_df = df[df["is_suspicious"]].copy()
     alerts_df = alerts_df.sort_values(by=["risk_score", "Timestamp"], ascending=[False, False])
@@ -517,11 +583,12 @@ elif page == "Alerts":
     high_count = int((alerts_df["risk_level"] == "High").sum())
 
     c1, c2, c3 = st.columns(3)
-    kpi_card(c1, "Suspicious events", f"{len(alerts_df):,}")
-    kpi_card(c2, "Critical", f"{critical_count:,}", accent=True)
-    kpi_card(c3, "High", f"{high_count:,}")
+    kpi_card(c1, "Suspicious events", f"{len(alerts_df):,}", "Risk score 30 or higher")
+    kpi_card(c2, "Critical", f"{critical_count:,}", "Needs immediate review", accent=True)
+    kpi_card(c3, "High", f"{high_count:,}", "Review soon")
 
-    section_header("Flagged events")
+    section_header("Flagged events", "Sorted by risk score, highest first")
+    risk_legend()
 
     display_columns = [
         "event_id", "Timestamp", "source_ip", "destination_ip",
@@ -545,9 +612,15 @@ elif page == "Alerts":
 
 elif page == "Investigation":
 
-    page_header("Threat investigation", "Filter events to investigate a specific pattern")
+    page_header("Investigation", "Combine filters to narrow down a specific pattern of events")
+
+    help_box(
+        "Set any of the filters below — leave a filter on \"All\" to ignore it. "
+        "Filters combine together, so adding more narrows the results further."
+    )
 
     with st.container(border=True):
+        st.caption("Network")
         col1, col2, col3 = st.columns(3)
 
         source_options = sorted(df["source_ip"].dropna().astype(str).unique().tolist())
@@ -558,6 +631,7 @@ elif page == "Investigation":
         selected_destination = col2.selectbox("Destination IP", ["All"] + destination_options)
         selected_protocol = col3.selectbox("Protocol", ["All"] + protocol_options)
 
+        st.caption("Threat")
         col1, col2, col3 = st.columns(3)
 
         attack_options = sorted(df["attack_type"].dropna().astype(str).unique().tolist())
@@ -568,12 +642,13 @@ elif page == "Investigation":
         selected_severity = col2.selectbox("Severity", ["All"] + severity_options)
         selected_network = col3.selectbox("Network segment", ["All"] + network_options)
 
+        st.caption("Connection")
         col1, col2 = st.columns(2)
 
         connection_options = sorted(df["connection_type"].dropna().astype(str).unique().tolist())
 
         selected_connection = col1.selectbox("Connection type", ["All"] + connection_options)
-        selected_risk = col2.selectbox("Risk level", ["All", "Critical", "High", "Medium", "Low"])
+        selected_risk = col2.selectbox("Risk level", ["All"] + RISK_ORDER)
 
     filtered = df.copy()
 
@@ -604,6 +679,7 @@ elif page == "Investigation":
     filtered = filtered.sort_values(by=["risk_score", "Timestamp"], ascending=[False, False])
 
     section_header("Results", f"{len(filtered):,} matching events")
+    risk_legend()
 
     display_columns = [
         "event_id", "Timestamp", "source_ip", "destination_ip", "protocol",
@@ -627,7 +703,7 @@ elif page == "Investigation":
 
 elif page == "Event detail":
 
-    page_header("Event detail", "Look up a single event to inspect its full context")
+    page_header("Event detail", "Look up a single event to see its full context")
 
     event_ids = df["event_id"].dropna().astype(str).tolist()
     selected_event = st.selectbox("Event ID", event_ids)
@@ -640,13 +716,13 @@ elif page == "Event detail":
         section_header("Risk assessment")
 
         c1, c2, c3 = st.columns(3)
-        kpi_card(c1, "Risk score", int(row["risk_score"]), accent=True)
+        kpi_card(c1, "Risk score", int(row["risk_score"]), "Out of 100", accent=True)
         c2.markdown(
             f'<div class="kpi-card"><div class="kpi-label">Risk level</div>'
             f'<div style="margin-top:6px;">{risk_badge(row["risk_level"])}</div></div>',
             unsafe_allow_html=True,
         )
-        kpi_card(c3, "Suspicious", "Yes" if row["is_suspicious"] else "No")
+        kpi_card(c3, "Suspicious", "Yes" if row["is_suspicious"] else "No", "Score 30 or higher")
 
         section_header("Event information")
 

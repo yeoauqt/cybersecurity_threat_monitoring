@@ -62,31 +62,36 @@ st.markdown(
         .stApp {{ background-color: {COLORS['bg']}; }}
         #MainMenu, footer {{ visibility: hidden; }}
 
+        .block-container {{ padding-top: 2.2rem; }}
+
         .app-title {{
-            font-size: 1.05rem;
+            font-size: 1.15rem;
             font-weight: 700;
             color: {COLORS['text']};
+            letter-spacing: -0.01em;
         }}
         .app-subtitle {{
             font-size: 0.82rem;
             color: {COLORS['text_dim']};
-            margin-top: 2px;
-            margin-bottom: 14px;
+            margin-top: 3px;
+            margin-bottom: 22px;
+            line-height: 1.4;
         }}
         .page-title {{
-            font-size: 1.6rem;
+            font-size: 1.7rem;
             font-weight: 700;
             color: {COLORS['text']};
-            margin-bottom: 2px;
+            margin-bottom: 3px;
+            letter-spacing: -0.015em;
         }}
         .page-subtitle {{
             font-size: 0.95rem;
             color: {COLORS['text_dim']};
-            margin-bottom: 20px;
+            margin-bottom: 22px;
         }}
 
         .section-header {{
-            margin: 26px 0 12px 0;
+            margin: 30px 0 12px 0;
         }}
         .section-title {{
             font-size: 1rem;
@@ -102,18 +107,19 @@ st.markdown(
         .kpi-card {{
             background-color: {COLORS['surface']};
             border: 1px solid {COLORS['border']};
-            border-radius: 8px;
-            padding: 16px 18px;
+            border-radius: 12px;
+            padding: 18px 20px;
             height: 100%;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
         }}
         .kpi-label {{
             font-size: 0.82rem;
             color: {COLORS['text_dim']};
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }}
         .kpi-value {{
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 1.65rem;
+            font-size: 1.75rem;
             font-weight: 600;
             color: {COLORS['text']};
         }}
@@ -121,7 +127,7 @@ st.markdown(
         .kpi-note {{
             font-size: 0.76rem;
             color: {COLORS['text_dim']};
-            margin-top: 4px;
+            margin-top: 5px;
         }}
 
         .badge {{
@@ -129,8 +135,8 @@ st.markdown(
             font-family: 'IBM Plex Mono', monospace;
             font-size: 0.8rem;
             font-weight: 600;
-            padding: 3px 10px;
-            border-radius: 4px;
+            padding: 4px 12px;
+            border-radius: 6px;
         }}
 
         .legend-row {{ margin-bottom: 18px; }}
@@ -153,23 +159,72 @@ st.markdown(
             background-color: {COLORS['surface']};
             border: 1px solid {COLORS['border']};
             border-left: 3px solid {COLORS['accent']};
-            border-radius: 6px;
+            border-radius: 8px;
             padding: 12px 16px;
             font-size: 0.85rem;
             color: {COLORS['text_dim']};
             margin-bottom: 18px;
         }}
 
+        /* ---- Sidebar ---- */
         section[data-testid="stSidebar"] {{
             border-right: 1px solid {COLORS['border']};
+        }}
+        section[data-testid="stSidebar"] .block-container {{
+            padding-top: 2rem;
+        }}
+
+        /* Turn the plain radio list into a modern pill-style nav:
+           hide the native circle indicator, make each label a
+           full-width row, and highlight the selected one. */
+        section[data-testid="stSidebar"] div[role="radiogroup"] {{
+            gap: 2px;
+        }}
+        section[data-testid="stSidebar"] div[role="radiogroup"] label {{
+            width: 100%;
+            padding: 9px 12px;
+            border-radius: 8px;
+            transition: background-color 0.12s ease;
+        }}
+        section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
+            background-color: {COLORS['bg']};
+        }}
+        section[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {{
+            display: none;
+        }}
+        section[data-testid="stSidebar"] div[role="radiogroup"] label p {{
+            font-size: 0.92rem;
+            color: {COLORS['text_dim']};
+            font-weight: 500;
+        }}
+        section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
+            background-color: {COLORS['accent']}14;
+        }}
+        section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p {{
+            color: {COLORS['accent']};
+            font-weight: 600;
         }}
 
         [data-testid="stMetricValue"] {{ font-family: 'IBM Plex Mono', monospace; }}
 
         div[data-testid="stDataFrame"] {{
             border: 1px solid {COLORS['border']};
-            border-radius: 8px;
+            border-radius: 10px;
             overflow: hidden;
+        }}
+
+        div[data-testid="stExpander"] {{
+            border: 1px solid {COLORS['border']};
+            border-radius: 10px;
+        }}
+
+        div[data-baseweb="select"] > div {{
+            border-radius: 8px;
+            border-color: {COLORS['border']};
+        }}
+
+        div[data-testid="stVerticalBlockBorderWrapper"] {{
+            border-radius: 12px !important;
         }}
     </style>
     """,
@@ -178,6 +233,7 @@ st.markdown(
 
 
 def page_header(title, subtitle):
+
     html = (
         f'<div class="page-title">{title}</div>'
         f'<div class="page-subtitle">{subtitle}</div>'

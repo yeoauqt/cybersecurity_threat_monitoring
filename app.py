@@ -198,27 +198,6 @@ def style_fig(fig, height=340):
     return fig
 
 
-def styled_table(df, badge_cols=None):
-    """Return a pandas Styler with severity/risk columns tinted by color."""
-    badge_cols = [c for c in (badge_cols or []) if c in df.columns]
-    styler = df.style.hide(axis="index")
-
-    if not badge_cols:
-        return styler
-
-    def _tint(val):
-        color = RISK_COLORS.get(str(val).strip().title())
-        if not color:
-            return ""
-        return f"background-color:{color}22;color:{color};font-weight:600"
-
-    try:
-        styler = styler.map(_tint, subset=badge_cols)
-    except AttributeError:
-        styler = styler.applymap(_tint, subset=badge_cols)
-    return styler
-
-
 # ============================================================
 # LOAD DATA FROM WAREHOUSE
 # ============================================================
@@ -554,8 +533,9 @@ elif page == "Alerts":
         st.info("No events currently meet the suspicious threshold.")
     else:
         st.dataframe(
-            styled_table(alerts_df[display_columns], badge_cols=["risk_level", "severity_level"]),
+            alerts_df[display_columns],
             use_container_width=True,
+            hide_index=True,
         )
 
 
@@ -635,8 +615,9 @@ elif page == "Investigation":
         st.info("No events match the current filters. Try widening your criteria.")
     else:
         st.dataframe(
-            styled_table(filtered[display_columns], badge_cols=["risk_level", "severity_level"]),
+            filtered[display_columns],
             use_container_width=True,
+            hide_index=True,
         )
 
 

@@ -23,12 +23,12 @@ st.set_page_config(
 
 COLORS = {
     "bg": "#0B0F14",
-    "surface": "#121821",
+    "surface": "#141B24",
     "surface_alt": "#0E131A",
-    "border": "#232C36",
-    "text": "#E7ECF2",
-    "text_dim": "#8896A6",
-    "accent": "#4C8DFF",
+    "border": "#2B3644",
+    "text": "#F2F5F8",
+    "text_dim": "#9BA9BA",
+    "accent": "#5B9BFF",
 }
 
 RISK_COLORS = {
@@ -139,6 +139,15 @@ st.markdown(
             border-color: {COLORS['border']};
         }}
 
+        section[data-testid="stSidebar"] label p {{
+            color: {COLORS['text']} !important;
+            font-size: 0.92rem;
+        }}
+
+        p, span, label, div {{ color: {COLORS['text']}; }}
+
+        [data-testid="stMetricLabel"] {{ color: {COLORS['text_dim']}; }}
+
         hr {{ border-color: {COLORS['border']}; }}
     </style>
     """,
@@ -148,24 +157,22 @@ st.markdown(
 
 def section_header(title, subtitle=None):
     sub_html = f'<div class="section-sub">{subtitle}</div>' if subtitle else ""
-    st.markdown(
-        f"""<div class="section-header">
-                <div class="section-title">{title}</div>
-                {sub_html}
-            </div>""",
-        unsafe_allow_html=True,
+    html = f'<div class="section-header"><div class="section-title">{title}</div>{sub_html}</div>'
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def page_header(title, subtitle):
+    html = (
+        f'<div class="app-title" style="font-size:1.4rem;">{title}</div>'
+        f'<div class="app-subtitle">{subtitle}</div>'
     )
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def kpi_card(col, label, value, accent=False):
     cls = "kpi-value accent" if accent else "kpi-value"
-    col.markdown(
-        f"""<div class="kpi-card">
-                <div class="kpi-label">{label}</div>
-                <div class="{cls}">{value}</div>
-            </div>""",
-        unsafe_allow_html=True,
-    )
+    html = f'<div class="kpi-card"><div class="kpi-label">{label}</div><div class="{cls}">{value}</div></div>'
+    col.markdown(html, unsafe_allow_html=True)
 
 
 def risk_badge(value):
@@ -425,8 +432,8 @@ except Exception as e:
 # ============================================================
 
 st.sidebar.markdown(
-    """<div class="app-title">Threat Monitoring</div>
-       <div class="app-subtitle">Security event analytics</div>""",
+    '<div class="app-title">Threat Monitoring</div>'
+    '<div class="app-subtitle">Security event analytics</div>',
     unsafe_allow_html=True,
 )
 
@@ -449,11 +456,7 @@ st.sidebar.markdown(
 
 if page == "Overview":
 
-    st.markdown(
-        """<div class="app-title" style="font-size:1.4rem;">Security overview</div>
-           <div class="app-subtitle">Event volume, severity, and traffic across the monitored network</div>""",
-        unsafe_allow_html=True,
-    )
+    page_header("Security overview", "Event volume, severity, and traffic across the monitored network")
 
     total_events = len(df)
     high_risk = len(df[df["risk_level"].isin(["Critical", "High"])])
@@ -525,11 +528,7 @@ if page == "Overview":
 
 elif page == "Alerts":
 
-    st.markdown(
-        """<div class="app-title" style="font-size:1.4rem;">Threat alerts</div>
-           <div class="app-subtitle">Suspicious events, ranked by risk score</div>""",
-        unsafe_allow_html=True,
-    )
+    page_header("Threat alerts", "Suspicious events, ranked by risk score")
 
     alerts_df = df[df["is_suspicious"]].copy()
     alerts_df = alerts_df.sort_values(by=["risk_score", "Timestamp"], ascending=[False, False])
@@ -566,11 +565,7 @@ elif page == "Alerts":
 
 elif page == "Investigation":
 
-    st.markdown(
-        """<div class="app-title" style="font-size:1.4rem;">Threat investigation</div>
-           <div class="app-subtitle">Filter events to investigate a specific pattern</div>""",
-        unsafe_allow_html=True,
-    )
+    page_header("Threat investigation", "Filter events to investigate a specific pattern")
 
     with st.container(border=True):
         col1, col2, col3 = st.columns(3)
@@ -652,11 +647,7 @@ elif page == "Investigation":
 
 elif page == "Event detail":
 
-    st.markdown(
-        """<div class="app-title" style="font-size:1.4rem;">Event detail</div>
-           <div class="app-subtitle">Look up a single event to inspect its full context</div>""",
-        unsafe_allow_html=True,
-    )
+    page_header("Event detail", "Look up a single event to inspect its full context")
 
     event_ids = df["event_id"].dropna().astype(str).tolist()
     selected_event = st.selectbox("Event ID", event_ids)
@@ -671,10 +662,8 @@ elif page == "Event detail":
         c1, c2, c3 = st.columns(3)
         kpi_card(c1, "Risk score", int(row["risk_score"]), accent=True)
         c2.markdown(
-            f"""<div class="kpi-card">
-                    <div class="kpi-label">Risk level</div>
-                    <div style="margin-top:2px;">{risk_badge(row['risk_level'])}</div>
-                </div>""",
+            f'<div class="kpi-card"><div class="kpi-label">Risk level</div>'
+            f'<div style="margin-top:6px;">{risk_badge(row["risk_level"])}</div></div>',
             unsafe_allow_html=True,
         )
         kpi_card(c3, "Suspicious", "Yes" if row["is_suspicious"] else "No")

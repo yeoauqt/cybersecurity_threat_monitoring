@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 
 st.set_page_config(
     page_title="Threat Monitoring",
+    page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -32,6 +33,7 @@ COLORS = {
     "text": "#1A2233",
     "text_dim": "#647087",
     "accent": "#2F6FED",
+    "accent_soft": "#EAF1FE",
 }
 
 RISK_COLORS = {
@@ -43,9 +45,71 @@ RISK_COLORS = {
 
 RISK_ORDER = ["Critical", "High", "Medium", "Low"]
 
+ACTION_COLORS = {
+    "Blocked": "#DC2626",
+    "Ignored": "#94A3B8",
+    "Logged": "#2F6FED",
+}
+
+ATTACK_PALETTE = ["#2F6FED", "#7CA6F4", "#1A2233", "#B7CDFA", "#647087"]
+PROTOCOL_PALETTE = ["#2F6FED", "#7CA6F4", "#B7CDFA", "#1A2233", "#647087"]
+
+# Column keys -> human-readable table headers (no more raw_snake_case)
+COLUMN_LABELS = {
+    "event_id": "Event ID",
+    "Timestamp": "Timestamp",
+    "source_ip": "Source IP",
+    "destination_ip": "Destination IP",
+    "protocol": "Protocol",
+    "attack_type": "Attack Type",
+    "attack_signature": "Attack Signature",
+    "severity_level": "Severity",
+    "anomaly_score": "Anomaly Score",
+    "risk_score": "Risk Score",
+    "risk_level": "Risk Level",
+    "action_taken": "Action Taken",
+    "network_segment": "Network Segment",
+    "connection_type": "Connection Type",
+    "packet_length": "Packet Length",
+    "traffic_type": "Traffic Type",
+    "packet_type": "Packet Type",
+    "log_source": "Log Source",
+}
+
+# Small feather-style outline icons (MIT-licensed style geometry),
+# used on the KPI cards so the overview reads at a glance.
+ICONS = {
+    "layers": '<polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>'
+              '<polyline points="2 17 12 22 22 17"></polyline>'
+              '<polyline points="2 12 12 17 22 12"></polyline>',
+    "alert": '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>'
+             '<line x1="12" y1="9" x2="12" y2="13"></line>'
+             '<line x1="12" y1="17" x2="12.01" y2="17"></line>',
+    "shield": '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>',
+    "bell": '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>'
+            '<path d="M13.73 21a2 2 0 0 1-3.46 0"></path>',
+    "search": '<circle cx="11" cy="11" r="8"></circle>'
+              '<line x1="21" y1="21" x2="16.65" y2="16.65"></line>',
+    "file": '<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>'
+            '<polyline points="13 2 13 9 20 9"></polyline>',
+}
+
+
+def icon_svg(name, color=None, size=18):
+    color = color or COLORS["text_dim"]
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
+        f'viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" '
+        f'stroke-linecap="round" stroke-linejoin="round">{ICONS[name]}</svg>'
+    )
+
 
 def _risk_color(value):
     return RISK_COLORS.get(str(value).strip().title(), COLORS["text_dim"])
+
+
+def _action_color(value):
+    return ACTION_COLORS.get(str(value).strip().title(), COLORS["text_dim"])
 
 
 # ============================================================
@@ -62,8 +126,14 @@ st.markdown(
         .stApp {{ background-color: {COLORS['bg']}; }}
         #MainMenu, footer {{ visibility: hidden; }}
 
-        .block-container {{ padding-top: 2.2rem; }}
+        .block-container {{ padding-top: 2.2rem; padding-bottom: 3rem; }}
 
+        .app-title-row {{
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin-bottom: 2px;
+        }}
         .app-title {{
             font-size: 1.15rem;
             font-weight: 700;
@@ -77,24 +147,32 @@ st.markdown(
             margin-bottom: 22px;
             line-height: 1.4;
         }}
+        .page-eyebrow {{
+            font-size: 0.76rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: {COLORS['accent']};
+            margin-bottom: 6px;
+        }}
         .page-title {{
-            font-size: 1.7rem;
+            font-size: 1.9rem;
             font-weight: 700;
             color: {COLORS['text']};
             margin-bottom: 3px;
-            letter-spacing: -0.015em;
+            letter-spacing: -0.02em;
         }}
         .page-subtitle {{
-            font-size: 0.95rem;
+            font-size: 0.97rem;
             color: {COLORS['text_dim']};
-            margin-bottom: 22px;
+            margin-bottom: 24px;
         }}
 
         .section-header {{
-            margin: 30px 0 12px 0;
+            margin: 32px 0 12px 0;
         }}
         .section-title {{
-            font-size: 1rem;
+            font-size: 1.02rem;
             font-weight: 600;
             color: {COLORS['text']};
         }}
@@ -104,30 +182,52 @@ st.markdown(
             margin-top: 1px;
         }}
 
+        /* ---- KPI cards ---- */
         .kpi-card {{
             background-color: {COLORS['surface']};
             border: 1px solid {COLORS['border']};
-            border-radius: 12px;
+            border-radius: 14px;
             padding: 18px 20px;
             height: 100%;
             box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+            transition: box-shadow 0.15s ease, transform 0.15s ease;
+        }}
+        .kpi-card:hover {{
+            box-shadow: 0 6px 16px rgba(16, 24, 40, 0.08);
+            transform: translateY(-1px);
+        }}
+        .kpi-top-row {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
         }}
         .kpi-label {{
             font-size: 0.82rem;
             color: {COLORS['text_dim']};
-            margin-bottom: 8px;
+            font-weight: 500;
+        }}
+        .kpi-icon-wrap {{
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }}
         .kpi-value {{
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 1.75rem;
+            font-size: 1.85rem;
             font-weight: 600;
             color: {COLORS['text']};
+            line-height: 1.1;
         }}
         .kpi-value.accent {{ color: {COLORS['accent']}; }}
         .kpi-note {{
             font-size: 0.76rem;
             color: {COLORS['text_dim']};
-            margin-top: 5px;
+            margin-top: 6px;
         }}
 
         .badge {{
@@ -139,13 +239,14 @@ st.markdown(
             border-radius: 6px;
         }}
 
-        .legend-row {{ margin-bottom: 18px; }}
+        .legend-row {{ margin-bottom: 18px; display: flex; flex-wrap: wrap; }}
         .legend-chip {{
             display: inline-flex;
             align-items: center;
             font-size: 0.82rem;
             color: {COLORS['text_dim']};
             margin-right: 18px;
+            font-weight: 500;
         }}
         .legend-dot {{
             display: inline-block;
@@ -156,14 +257,26 @@ st.markdown(
         }}
 
         .help-box {{
-            background-color: {COLORS['surface']};
+            background-color: {COLORS['accent_soft']};
             border: 1px solid {COLORS['border']};
             border-left: 3px solid {COLORS['accent']};
-            border-radius: 8px;
-            padding: 12px 16px;
-            font-size: 0.85rem;
-            color: {COLORS['text_dim']};
+            border-radius: 10px;
+            padding: 13px 16px;
+            font-size: 0.87rem;
+            color: {COLORS['text']};
             margin-bottom: 18px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }}
+
+        .empty-state {{
+            background-color: {COLORS['surface']};
+            border: 1px dashed {COLORS['border']};
+            border-radius: 12px;
+            padding: 34px 20px;
+            text-align: center;
+            color: {COLORS['text_dim']};
         }}
 
         /* ---- Sidebar ---- */
@@ -209,13 +322,14 @@ st.markdown(
 
         div[data-testid="stDataFrame"] {{
             border: 1px solid {COLORS['border']};
-            border-radius: 10px;
+            border-radius: 12px;
             overflow: hidden;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
         }}
 
         div[data-testid="stExpander"] {{
             border: 1px solid {COLORS['border']};
-            border-radius: 10px;
+            border-radius: 12px;
         }}
 
         div[data-baseweb="select"] > div {{
@@ -224,7 +338,13 @@ st.markdown(
         }}
 
         div[data-testid="stVerticalBlockBorderWrapper"] {{
-            border-radius: 12px !important;
+            border-radius: 14px !important;
+        }}
+
+        label[data-testid="stWidgetLabel"] p {{
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: {COLORS['text_dim']};
         }}
     </style>
     """,
@@ -232,9 +352,9 @@ st.markdown(
 )
 
 
-def page_header(title, subtitle):
-
+def page_header(eyebrow, title, subtitle):
     html = (
+        f'<div class="page-eyebrow">{eyebrow}</div>'
         f'<div class="page-title">{title}</div>'
         f'<div class="page-subtitle">{subtitle}</div>'
     )
@@ -247,11 +367,21 @@ def section_header(title, subtitle=None):
     st.markdown(html, unsafe_allow_html=True)
 
 
-def kpi_card(col, label, value, note=None, accent=False):
+def kpi_card(col, label, value, note=None, accent=False, icon=None, icon_color=None):
     cls = "kpi-value accent" if accent else "kpi-value"
     note_html = f'<div class="kpi-note">{note}</div>' if note else ""
+
+    icon_html = ""
+    if icon:
+        icon_color = icon_color or COLORS["accent"]
+        icon_html = (
+            f'<div class="kpi-icon-wrap" style="background:{icon_color}17;">'
+            f'{icon_svg(icon, color=icon_color, size=16)}</div>'
+        )
+
     html = (
-        f'<div class="kpi-card"><div class="kpi-label">{label}</div>'
+        '<div class="kpi-card">'
+        f'<div class="kpi-top-row"><div class="kpi-label">{label}</div>{icon_html}</div>'
         f'<div class="{cls}">{value}</div>{note_html}</div>'
     )
     col.markdown(html, unsafe_allow_html=True)
@@ -275,27 +405,66 @@ def risk_legend():
 
 
 def help_box(text):
-    st.markdown(f'<div class="help-box">{text}</div>', unsafe_allow_html=True)
+    html = (
+        '<div class="help-box">'
+        f'<div style="margin-top:1px;">{icon_svg("search", color=COLORS["accent"], size=16)}</div>'
+        f'<div>{text}</div></div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
 
 
-def style_fig(fig, height=340, show_legend=True):
+def empty_state(text, icon="file"):
+    html = (
+        f'<div class="empty-state">{icon_svg(icon, color=COLORS["text_dim"], size=26)}'
+        f'<div style="margin-top:10px;">{text}</div></div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def style_fig(fig, height=340, show_legend=True, x_title=None, y_title=None):
     fig.update_layout(
         paper_bgcolor=COLORS["surface"],
         plot_bgcolor=COLORS["surface"],
         font=dict(family="IBM Plex Sans, sans-serif", color=COLORS["text"], size=12),
         title=dict(font=dict(size=14, color=COLORS["text"])),
-        margin=dict(l=10, r=10, t=40, b=10),
+        margin=dict(l=10, r=10, t=10, b=10),
         legend=dict(bgcolor="rgba(0,0,0,0)"),
         showlegend=show_legend,
         height=height,
+        hoverlabel=dict(
+            bgcolor=COLORS["surface"],
+            font=dict(family="IBM Plex Sans, sans-serif", color=COLORS["text"]),
+            bordercolor=COLORS["border"],
+        ),
     )
-    fig.update_xaxes(gridcolor=COLORS["border"], zeroline=False, linecolor=COLORS["border"])
-    fig.update_yaxes(gridcolor=COLORS["border"], zeroline=False, linecolor=COLORS["border"])
+    fig.update_xaxes(
+        gridcolor=COLORS["border"], zeroline=False, linecolor=COLORS["border"],
+        title=dict(text=x_title, font=dict(size=12, color=COLORS["text_dim"])) if x_title else None,
+    )
+    fig.update_yaxes(
+        gridcolor=COLORS["border"], zeroline=False, linecolor=COLORS["border"],
+        title=dict(text=y_title, font=dict(size=12, color=COLORS["text_dim"])) if y_title else None,
+    )
     return fig
 
 
 def chart_panel():
     return st.container(border=True)
+
+
+def format_table(df_subset, columns):
+    """Return a display-ready copy: readable headers, tidy values."""
+    out = df_subset[columns].copy()
+
+    if "Timestamp" in out.columns:
+        out["Timestamp"] = pd.to_datetime(out["Timestamp"]).dt.strftime("%Y-%m-%d %H:%M")
+    if "anomaly_score" in out.columns:
+        out["anomaly_score"] = out["anomaly_score"].round(1)
+    if "risk_score" in out.columns:
+        out["risk_score"] = out["risk_score"].astype(int)
+
+    out = out.rename(columns=COLUMN_LABELS)
+    return out
 
 
 # ============================================================
@@ -512,7 +681,9 @@ except Exception as e:
 # ============================================================
 
 st.sidebar.markdown(
-    '<div class="app-title">Threat Monitoring</div>'
+    '<div class="app-title-row">'
+    f'{icon_svg("shield", color=COLORS["accent"], size=20)}'
+    '<span class="app-title">Threat Monitoring</span></div>'
     '<div class="app-subtitle">Security event analytics for the monitored network</div>',
     unsafe_allow_html=True,
 )
@@ -554,7 +725,11 @@ with st.sidebar.expander("How risk is scored"):
 
 if page == "Overview":
 
-    page_header("Overview", "How much is happening, how severe it is, and where it's coming from")
+    page_header(
+        "Overview",
+        "Network activity at a glance",
+        "How much is happening, how severe it is, and where it's coming from",
+    )
 
     total_events = len(df)
     high_risk = len(df[df["risk_level"].isin(["Critical", "High"])])
@@ -562,17 +737,27 @@ if page == "Overview":
     alerts = int((df["alert_triggered"] == 1).sum())
 
     c1, c2, c3, c4 = st.columns(4)
-    kpi_card(c1, "Total events", f"{total_events:,}", "All logged events in range")
-    kpi_card(c2, "High risk", f"{high_risk:,}", "Critical + High risk level", accent=True)
-    kpi_card(c3, "Malware indicators", f"{malware:,}", "Events flagging malware")
-    kpi_card(c4, "Alerts triggered", f"{alerts:,}", "Events that fired an alert")
+    kpi_card(c1, "Total events", f"{total_events:,}", "All logged events in range",
+              icon="layers", icon_color=COLORS["accent"])
+    kpi_card(c2, "High risk", f"{high_risk:,}", "Critical + High risk level",
+              accent=True, icon="alert", icon_color=RISK_COLORS["High"])
+    kpi_card(c3, "Malware indicators", f"{malware:,}", "Events flagging malware",
+              icon="shield", icon_color=RISK_COLORS["Critical"])
+    kpi_card(c4, "Alerts triggered", f"{alerts:,}", "Events that fired an alert",
+              icon="bell", icon_color=COLORS["accent"])
 
     section_header("Events over time", "Daily event volume across the full period")
     with chart_panel():
         daily_events = df.groupby("event_date").size().reset_index(name="events")
         fig = px.line(daily_events, x="event_date", y="events")
-        fig.update_traces(line_color=COLORS["accent"], line_width=2.2)
-        st.plotly_chart(style_fig(fig, show_legend=False), use_container_width=True)
+        fig.update_traces(
+            line_color=COLORS["accent"], line_width=2.2,
+            hovertemplate="%{x|%b %d, %Y}<br><b>%{y} events</b><extra></extra>",
+        )
+        st.plotly_chart(
+            style_fig(fig, show_legend=False, x_title="Date", y_title="Events"),
+            use_container_width=True,
+        )
 
     col1, col2 = st.columns(2)
 
@@ -582,8 +767,14 @@ if page == "Overview":
             attack_counts = df["attack_type"].value_counts().reset_index()
             attack_counts.columns = ["attack_type", "events"]
             fig_attack = px.bar(attack_counts, x="attack_type", y="events")
-            fig_attack.update_traces(marker_color=COLORS["accent"])
-            st.plotly_chart(style_fig(fig_attack, show_legend=False), use_container_width=True)
+            fig_attack.update_traces(
+                marker_color=ATTACK_PALETTE[: len(attack_counts)],
+                hovertemplate="<b>%{x}</b><br>%{y} events<extra></extra>",
+            )
+            st.plotly_chart(
+                style_fig(fig_attack, show_legend=False, x_title="Attack Type", y_title="Events"),
+                use_container_width=True,
+            )
 
     with col2:
         section_header("Severity level", "Split of events by severity")
@@ -594,7 +785,11 @@ if page == "Overview":
                 severity_counts, x="severity", y="events",
                 color="severity", color_discrete_map=RISK_COLORS,
             )
-            st.plotly_chart(style_fig(fig_severity, show_legend=False), use_container_width=True)
+            fig_severity.update_traces(hovertemplate="<b>%{x}</b><br>%{y} events<extra></extra>")
+            st.plotly_chart(
+                style_fig(fig_severity, show_legend=False, x_title="Severity", y_title="Events"),
+                use_container_width=True,
+            )
 
     col3, col4 = st.columns(2)
 
@@ -607,12 +802,19 @@ if page == "Overview":
                 data=[go.Pie(
                     labels=protocol_counts["protocol"],
                     values=protocol_counts["events"],
-                    hole=0.55,
+                    hole=0.6,
                     marker=dict(
-                        colors=["#2F6FED", "#7CA6F4", "#B7CDFA", "#1A2233", "#647087"],
+                        colors=PROTOCOL_PALETTE,
                         line=dict(color=COLORS["surface"], width=2),
                     ),
+                    hovertemplate="<b>%{label}</b><br>%{value} events (%{percent})<extra></extra>",
+                    textinfo="percent",
                 )]
+            )
+            fig_protocol.add_annotation(
+                text=f"{protocol_counts['events'].sum():,}<br><span style='font-size:11px;color:{COLORS['text_dim']}'>events</span>",
+                showarrow=False,
+                font=dict(size=18, color=COLORS["text"], family="IBM Plex Mono, monospace"),
             )
             st.plotly_chart(style_fig(fig_protocol), use_container_width=True)
 
@@ -621,10 +823,16 @@ if page == "Overview":
         with chart_panel():
             action_counts = df["action_taken"].value_counts().reset_index()
             action_counts.columns = ["action", "events"]
+            action_counts = action_counts.sort_values("events")
             fig_action = px.bar(action_counts, x="events", y="action", orientation="h")
-            fig_action.update_traces(marker_color=COLORS["accent"])
-            fig_action.update_layout(yaxis=dict(categoryorder="total ascending"))
-            st.plotly_chart(style_fig(fig_action, show_legend=False), use_container_width=True)
+            fig_action.update_traces(
+                marker_color=[_action_color(a) for a in action_counts["action"]],
+                hovertemplate="<b>%{y}</b><br>%{x} events<extra></extra>",
+            )
+            st.plotly_chart(
+                style_fig(fig_action, show_legend=False, x_title="Events", y_title=None),
+                use_container_width=True,
+            )
 
 
 # ============================================================
@@ -633,7 +841,11 @@ if page == "Overview":
 
 elif page == "Alerts":
 
-    page_header("Alerts", "Events with a risk score of 30 or higher, most urgent first")
+    page_header(
+        "Alerts",
+        "Events that need attention",
+        "Events with a risk score of 30 or higher, most urgent first",
+    )
 
     alerts_df = df[df["is_suspicious"]].copy()
     alerts_df = alerts_df.sort_values(by=["risk_score", "Timestamp"], ascending=[False, False])
@@ -642,9 +854,12 @@ elif page == "Alerts":
     high_count = int((alerts_df["risk_level"] == "High").sum())
 
     c1, c2, c3 = st.columns(3)
-    kpi_card(c1, "Suspicious events", f"{len(alerts_df):,}", "Risk score 30 or higher")
-    kpi_card(c2, "Critical", f"{critical_count:,}", "Needs immediate review", accent=True)
-    kpi_card(c3, "High", f"{high_count:,}", "Review soon")
+    kpi_card(c1, "Suspicious events", f"{len(alerts_df):,}", "Risk score 30 or higher",
+              icon="search", icon_color=COLORS["accent"])
+    kpi_card(c2, "Critical", f"{critical_count:,}", "Needs immediate review",
+              accent=True, icon="alert", icon_color=RISK_COLORS["Critical"])
+    kpi_card(c3, "High", f"{high_count:,}", "Review soon",
+              icon="alert", icon_color=RISK_COLORS["High"])
 
     section_header("Flagged events", "Sorted by risk score, highest first")
     risk_legend()
@@ -656,10 +871,10 @@ elif page == "Alerts":
     ]
 
     if alerts_df.empty:
-        st.info("No events currently meet the suspicious threshold.")
+        empty_state("No events currently meet the suspicious threshold.", icon="shield")
     else:
         st.dataframe(
-            alerts_df[display_columns],
+            format_table(alerts_df, display_columns),
             use_container_width=True,
             hide_index=True,
         )
@@ -671,15 +886,19 @@ elif page == "Alerts":
 
 elif page == "Investigation":
 
-    page_header("Investigation", "Combine filters to narrow down a specific pattern of events")
+    page_header(
+        "Investigation",
+        "Build your own query",
+        "Combine filters to narrow down a specific pattern of events",
+    )
 
     help_box(
-        "Set any of the filters below — leave a filter on \"All\" to ignore it. "
+        "Set any of the filters below — leave a filter on <b>All</b> to ignore it. "
         "Filters combine together, so adding more narrows the results further."
     )
 
     with st.container(border=True):
-        st.caption("Network")
+        st.caption("NETWORK")
         col1, col2, col3 = st.columns(3)
 
         source_options = sorted(df["source_ip"].dropna().astype(str).unique().tolist())
@@ -690,7 +909,7 @@ elif page == "Investigation":
         selected_destination = col2.selectbox("Destination IP", ["All"] + destination_options)
         selected_protocol = col3.selectbox("Protocol", ["All"] + protocol_options)
 
-        st.caption("Threat")
+        st.caption("THREAT")
         col1, col2, col3 = st.columns(3)
 
         attack_options = sorted(df["attack_type"].dropna().astype(str).unique().tolist())
@@ -701,7 +920,7 @@ elif page == "Investigation":
         selected_severity = col2.selectbox("Severity", ["All"] + severity_options)
         selected_network = col3.selectbox("Network segment", ["All"] + network_options)
 
-        st.caption("Connection")
+        st.caption("CONNECTION")
         col1, col2 = st.columns(2)
 
         connection_options = sorted(df["connection_type"].dropna().astype(str).unique().tolist())
@@ -747,10 +966,10 @@ elif page == "Investigation":
     ]
 
     if filtered.empty:
-        st.info("No events match the current filters. Try widening your criteria.")
+        empty_state("No events match the current filters. Try widening your criteria.", icon="search")
     else:
         st.dataframe(
-            filtered[display_columns],
+            format_table(filtered, display_columns),
             use_container_width=True,
             hide_index=True,
         )
@@ -762,7 +981,11 @@ elif page == "Investigation":
 
 elif page == "Event detail":
 
-    page_header("Event detail", "Look up a single event to see its full context")
+    page_header(
+        "Event detail",
+        "Full context, one event at a time",
+        "Look up a single event to see its full context",
+    )
 
     event_ids_numeric = pd.to_numeric(df["event_id"], errors="coerce")
 
@@ -800,34 +1023,40 @@ elif page == "Event detail":
         section_header("Risk assessment")
 
         c1, c2, c3 = st.columns(3)
-        kpi_card(c1, "Risk score", int(row["risk_score"]), "Out of 100", accent=True)
+        kpi_card(c1, "Risk score", int(row["risk_score"]), "Out of 100",
+                  accent=True, icon="alert", icon_color=_risk_color(row["risk_level"]))
         c2.markdown(
-            f'<div class="kpi-card"><div class="kpi-label">Risk level</div>'
-            f'<div style="margin-top:6px;">{risk_badge(row["risk_level"])}</div></div>',
+            '<div class="kpi-card"><div class="kpi-top-row">'
+            '<div class="kpi-label">Risk level</div></div>'
+            f'<div style="margin-top:2px;">{risk_badge(row["risk_level"])}</div></div>',
             unsafe_allow_html=True,
         )
-        kpi_card(c3, "Suspicious", "Yes" if row["is_suspicious"] else "No", "Score 30 or higher")
+        kpi_card(c3, "Suspicious", "Yes" if row["is_suspicious"] else "No", "Score 30 or higher",
+                  icon="search", icon_color=COLORS["accent"])
 
         section_header("Event information")
 
+        yes_no = lambda v: "Yes" if v == 1 else "No"
+        timestamp_display = pd.to_datetime(row["Timestamp"]).strftime("%Y-%m-%d %H:%M:%S")
+
         details = {
             "Event ID": row["event_id"],
-            "Timestamp": row["Timestamp"],
+            "Timestamp": timestamp_display,
             "Source IP": row["source_ip"],
             "Destination IP": row["destination_ip"],
             "Protocol": row["protocol"],
             "Attack type": row["attack_type"],
             "Attack signature": row["attack_signature"],
             "Severity level": row["severity_level"],
-            "Anomaly score": row["anomaly_score"],
+            "Anomaly score": round(float(row["anomaly_score"]), 1),
             "Network segment": row["network_segment"],
             "Connection type": row["connection_type"],
             "Packet length": row["packet_length"],
-            "Malware indicator": row["malware_indicator"],
-            "IDS/IPS alert": row["ids_ips_alert_present"],
-            "Firewall log": row["firewall_log_present"],
-            "Alert triggered": row["alert_triggered"],
-            "Proxy present": row["proxy_present"],
+            "Malware indicator": yes_no(row["malware_indicator"]),
+            "IDS/IPS alert": yes_no(row["ids_ips_alert_present"]),
+            "Firewall log": yes_no(row["firewall_log_present"]),
+            "Alert triggered": yes_no(row["alert_triggered"]),
+            "Proxy present": yes_no(row["proxy_present"]),
             "Action taken": row["action_taken"],
         }
 
@@ -835,4 +1064,4 @@ elif page == "Event detail":
 
         st.dataframe(details_df, use_container_width=True, hide_index=True)
 
-        st.info("Investigation focus: what happened, and how concerning is this event?")
+        help_box("Investigation focus: what happened, and how concerning is this event?")

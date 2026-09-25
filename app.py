@@ -4,6 +4,30 @@ import pandas as pd
 import duckdb
 import plotly.express as px
 import plotly.graph_objects as go
+from PIL import Image, ImageDraw
+
+
+# ============================================================
+# FAVICON
+# A small monochrome shield mark drawn as geometry (no emoji),
+# rendered at 4x and downsampled for a clean, anti-aliased edge.
+# ============================================================
+
+def _build_favicon(color="#2F6FED", size=64, supersample=4):
+    s = size * supersample
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    points = [
+        (0.50 * s, 0.07 * s),
+        (0.85 * s, 0.22 * s),
+        (0.85 * s, 0.53 * s),
+        (0.50 * s, 0.93 * s),
+        (0.15 * s, 0.53 * s),
+        (0.15 * s, 0.22 * s),
+    ]
+    stroke_width = max(2, int(0.05 * s))
+    draw.line(points + [points[0]], fill=color, width=stroke_width, joint="curve")
+    return img.resize((size, size), Image.LANCZOS)
 
 
 # ============================================================
@@ -12,7 +36,7 @@ import plotly.graph_objects as go
 
 st.set_page_config(
     page_title="Threat Monitoring",
-    page_icon="🛡️",
+    page_icon=_build_favicon(),
     layout="wide",
     initial_sidebar_state="expanded",
 )

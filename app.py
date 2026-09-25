@@ -51,13 +51,28 @@ st.set_page_config(
 # ============================================================
 
 COLORS = {
-    "bg": "#F6F8FB",
+    "bg": "#EEF4FE",          # soft blue-white page background
     "surface": "#FFFFFF",
-    "border": "#E2E8F0",
-    "text": "#1A2233",
-    "text_dim": "#647087",
+    "surface_tint": "#F4F8FF",  # secondary panel tone, for alternating blue/white rhythm
+    "border": "#D9E5FA",       # blue-tinted border instead of plain gray
+    "text": "#13213B",
+    "text_dim": "#5A7093",
     "accent": "#2F6FED",
-    "accent_soft": "#EAF1FE",
+    "accent_dark": "#1B3F91",
+    "accent_soft": "#E3EDFD",
+}
+
+# Sidebar sits on a deep blue gradient, so it gets its own text/hover
+# tokens for contrast — this is where the "navy + white" half of the
+# blue theme lives, while the content area stays pale blue and white.
+SIDEBAR = {
+    "grad_start": "#12275C",
+    "grad_mid": "#1D4ED8",
+    "grad_end": "#3B7BF6",
+    "text": "#FFFFFF",
+    "text_dim": "#C4D8FB",
+    "hover_bg": "rgba(255, 255, 255, 0.12)",
+    "active_bg": "rgba(255, 255, 255, 0.20)",
 }
 
 RISK_COLORS = {
@@ -161,12 +176,12 @@ st.markdown(
         .app-title {{
             font-size: 1.15rem;
             font-weight: 700;
-            color: {COLORS['text']};
+            color: {SIDEBAR['text']};
             letter-spacing: -0.01em;
         }}
         .app-subtitle {{
             font-size: 0.82rem;
-            color: {COLORS['text_dim']};
+            color: {SIDEBAR['text_dim']};
             margin-top: 3px;
             margin-bottom: 22px;
             line-height: 1.4;
@@ -178,6 +193,17 @@ st.markdown(
             text-transform: uppercase;
             color: {COLORS['accent']};
             margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }}
+        .page-eyebrow::before {{
+            content: "";
+            display: inline-block;
+            width: 14px;
+            height: 3px;
+            border-radius: 2px;
+            background: linear-gradient(90deg, {COLORS['accent']}, {COLORS['accent_dark']});
         }}
         .page-title {{
             font-size: 1.9rem;
@@ -210,8 +236,9 @@ st.markdown(
         .kpi-card {{
             background-color: {COLORS['surface']};
             border: 1px solid {COLORS['border']};
+            border-top: 3px solid {COLORS['accent']}55;
             border-radius: 14px;
-            padding: 18px 20px;
+            padding: 17px 20px 18px;
             height: 100%;
             box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
             transition: box-shadow 0.15s ease, transform 0.15s ease;
@@ -303,9 +330,13 @@ st.markdown(
             color: {COLORS['text_dim']};
         }}
 
-        /* ---- Sidebar ---- */
+        /* ---- Sidebar: deep blue gradient, the "navy" half of the theme ---- */
         section[data-testid="stSidebar"] {{
-            border-right: 1px solid {COLORS['border']};
+            background: linear-gradient(190deg,
+                {SIDEBAR['grad_start']} 0%,
+                {SIDEBAR['grad_mid']} 58%,
+                {SIDEBAR['grad_end']} 100%);
+            border-right: none;
         }}
         section[data-testid="stSidebar"] .block-container {{
             padding-top: 2rem;
@@ -324,22 +355,51 @@ st.markdown(
             transition: background-color 0.12s ease;
         }}
         section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
-            background-color: {COLORS['bg']};
+            background-color: {SIDEBAR['hover_bg']};
         }}
         section[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {{
             display: none;
         }}
         section[data-testid="stSidebar"] div[role="radiogroup"] label p {{
             font-size: 0.92rem;
-            color: {COLORS['text_dim']};
+            color: {SIDEBAR['text_dim']};
             font-weight: 500;
         }}
         section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
-            background-color: {COLORS['accent']}14;
+            background-color: {SIDEBAR['active_bg']};
         }}
         section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p {{
-            color: {COLORS['accent']};
+            color: {SIDEBAR['text']};
             font-weight: 600;
+        }}
+
+        /* Captions, divider and expander inside the sidebar need their
+           own light-on-navy treatment so they stay readable. */
+        section[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+        section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {{
+            color: {SIDEBAR['text_dim']} !important;
+        }}
+        section[data-testid="stSidebar"] hr {{
+            border-color: rgba(255, 255, 255, 0.22);
+        }}
+        section[data-testid="stSidebar"] div[data-testid="stExpander"] {{
+            background-color: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 12px;
+        }}
+        section[data-testid="stSidebar"] div[data-testid="stExpander"] summary p {{
+            color: {SIDEBAR['text']};
+            font-weight: 600;
+        }}
+        section[data-testid="stSidebar"] div[data-testid="stExpanderDetails"] * {{
+            color: {SIDEBAR['text_dim']} !important;
+        }}
+        section[data-testid="stSidebar"] div[data-testid="stExpanderDetails"] strong {{
+            color: {SIDEBAR['text']} !important;
+        }}
+        section[data-testid="stSidebar"] svg {{
+            color: {SIDEBAR['text']};
+            fill: {SIDEBAR['text']};
         }}
 
         [data-testid="stMetricValue"] {{ font-family: 'IBM Plex Mono', monospace; }}
@@ -363,6 +423,7 @@ st.markdown(
 
         div[data-testid="stVerticalBlockBorderWrapper"] {{
             border-radius: 14px !important;
+            border-color: {COLORS['border']} !important;
         }}
 
         label[data-testid="stWidgetLabel"] p {{
@@ -391,7 +452,10 @@ def section_header(title, subtitle=None):
     st.markdown(html, unsafe_allow_html=True)
 
 
-def kpi_card(col, label, value, note=None, accent=False, icon=None, icon_color=None):
+def kpi_card(col, label, value, note=None, accent=False, icon=None, icon_color=None, tint=False):
+    """tint=True gives the card a soft blue fill instead of white, so a
+    row of cards reads as an alternating blue/white rhythm rather than
+    a flat block of identical white boxes."""
     cls = "kpi-value accent" if accent else "kpi-value"
     note_html = f'<div class="kpi-note">{note}</div>' if note else ""
 
@@ -403,8 +467,13 @@ def kpi_card(col, label, value, note=None, accent=False, icon=None, icon_color=N
             f'{icon_svg(icon, color=icon_color, size=16)}</div>'
         )
 
+    card_style = (
+        f'background:{COLORS["accent_soft"]}; border-top-color:{COLORS["accent"]};'
+        if tint else ""
+    )
+
     html = (
-        '<div class="kpi-card">'
+        f'<div class="kpi-card" style="{card_style}">'
         f'<div class="kpi-top-row"><div class="kpi-label">{label}</div>{icon_html}</div>'
         f'<div class="{cls}">{value}</div>{note_html}</div>'
     )
@@ -706,7 +775,7 @@ except Exception as e:
 
 st.sidebar.markdown(
     '<div class="app-title-row">'
-    f'{icon_svg("shield", color=COLORS["accent"], size=20)}'
+    f'{icon_svg("shield", color=SIDEBAR["text"], size=20)}'
     '<span class="app-title">Threat Monitoring</span></div>'
     '<div class="app-subtitle">Security event analytics for the monitored network</div>',
     unsafe_allow_html=True,
@@ -764,11 +833,11 @@ if page == "Overview":
     kpi_card(c1, "Total events", f"{total_events:,}", "All logged events in range",
               icon="layers", icon_color=COLORS["accent"])
     kpi_card(c2, "High risk", f"{high_risk:,}", "Critical + High risk level",
-              accent=True, icon="alert", icon_color=RISK_COLORS["High"])
+              accent=True, icon="alert", icon_color=RISK_COLORS["High"], tint=True)
     kpi_card(c3, "Malware indicators", f"{malware:,}", "Events flagging malware",
               icon="shield", icon_color=RISK_COLORS["Critical"])
     kpi_card(c4, "Alerts triggered", f"{alerts:,}", "Events that fired an alert",
-              icon="bell", icon_color=COLORS["accent"])
+              icon="bell", icon_color=COLORS["accent"], tint=True)
 
     section_header("Events over time", "Daily event volume across the full period")
     with chart_panel():
@@ -879,11 +948,11 @@ elif page == "Alerts":
 
     c1, c2, c3 = st.columns(3)
     kpi_card(c1, "Suspicious events", f"{len(alerts_df):,}", "Risk score 30 or higher",
-              icon="search", icon_color=COLORS["accent"])
+              icon="search", icon_color=COLORS["accent"], tint=True)
     kpi_card(c2, "Critical", f"{critical_count:,}", "Needs immediate review",
               accent=True, icon="alert", icon_color=RISK_COLORS["Critical"])
     kpi_card(c3, "High", f"{high_count:,}", "Review soon",
-              icon="alert", icon_color=RISK_COLORS["High"])
+              icon="alert", icon_color=RISK_COLORS["High"], tint=True)
 
     section_header("Flagged events", "Sorted by risk score, highest first")
     risk_legend()
@@ -1050,13 +1119,13 @@ elif page == "Event detail":
         kpi_card(c1, "Risk score", int(row["risk_score"]), "Out of 100",
                   accent=True, icon="alert", icon_color=_risk_color(row["risk_level"]))
         c2.markdown(
-            '<div class="kpi-card"><div class="kpi-top-row">'
-            '<div class="kpi-label">Risk level</div></div>'
+            f'<div class="kpi-card" style="background:{COLORS["accent_soft"]};">'
+            '<div class="kpi-top-row"><div class="kpi-label">Risk level</div></div>'
             f'<div style="margin-top:2px;">{risk_badge(row["risk_level"])}</div></div>',
             unsafe_allow_html=True,
         )
         kpi_card(c3, "Suspicious", "Yes" if row["is_suspicious"] else "No", "Score 30 or higher",
-                  icon="search", icon_color=COLORS["accent"])
+                  icon="search", icon_color=COLORS["accent"], tint=True)
 
         section_header("Event information")
 
